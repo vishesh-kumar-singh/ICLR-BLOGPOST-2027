@@ -179,7 +179,7 @@ Arditi et al. and Kazemi et al. study the same behavior, but they point at very 
 
 * **The neuron and the direction are linked.** When a prompt is harmful, neuron 4258 pushes the model's hidden state along the refusal direction about nine times more than any other neuron in its layer.
 * **Both results hold up on Llama.** Removing the direction cuts refusals on harmful requests from 83% to 14.5%. Setting the neuron to -4, as Kazemi et al. do, cuts them to 0.6%.
-* **The neuron's effect has two halves.** Changing only the part of its output along the direction, or only the rest, each cuts refusals to about a third. Both together remove almost all of them.
+* **The neuron's effect has two halves.** The part of its output along the direction carries a real share of the effect (setting only that part to -4 takes HarmBench refusals from 83% to between 34% and 60%, depending on which version of the direction is used), but the rest carries as much or more. Both together remove almost all refusals.
 * **Over-refusal falls faster, but not cleanly.** Both kinds of refusal fall when the neuron is pushed down. At gentle settings, refusals on harmless but risky-looking prompts fall by a larger factor than HarmBench refusals, but WildJailbreak refusals fall by a similar factor. Strong changes remove both.
 * **Telling prompts apart is not the same as controlling the model.** Neurons that are best at separating harmful from harmless prompts mostly did not lower refusals when we changed them.
 
@@ -229,7 +229,9 @@ We also tried three other neurons from the same layer that are about as active b
 
 ### The Neuron Has Two Halves
 
-Neuron 4258's output vector can be split into two pieces: the piece that points along the refusal direction, and everything else. The "everything else" part is actually the larger one. We changed one piece at a time, to -4, and left the other alone. As a check, we also pushed in a random direction at right angles to the refusal direction, with the same size as "everything else".
+Neuron 4258's output vector can be split into two pieces: the piece that points along the refusal direction, and everything else. We changed one piece at a time, to -4, and left the other alone. As a check, we also pushed in a random direction at right angles to the refusal direction, with the same size as "everything else".
+
+There is a catch: what counts as "the piece along the direction" depends on which version of the refusal direction we use. We have three. The first is the one used so far, measured after layer 11. It already contains what the neuron itself writes, so we also tried the direction with the neuron's own write removed, and the direction measured just before layer 11. The three give different splits of the same neuron: the piece along the direction has a length of 0.44, 0.27 and 0.29, against 0.71 to 0.79 for the rest.
 
 <div class="comparison-table" markdown="block">
 
@@ -237,13 +239,22 @@ Neuron 4258's output vector can be split into two pieces: the piece that points 
 | :--- | :---: | :---: | :---: |
 | Nothing | 83.0% | 28.0% | 85% |
 | The whole neuron | 0.6% | 0.0% | 76% |
+| *Direction measured after layer 11 (used so far)* | | | |
 | Only the piece along the direction | 34.0% | 0.0% | 85% |
 | Only the rest | 33.3% | 0.0% | 79% |
 | A random push of the same size as the rest | 85.5% | 46.3% | 77% |
+| *Same direction, neuron's own write removed* | | | |
+| Only the piece along the direction | 56.0% | 3.0% | 83% |
+| Only the rest | 6.3% | 0.0% | 72% |
+| A random push of the same size as the rest | 86.2% | 47.0% | 72% |
+| *Direction measured just before layer 11* | | | |
+| Only the piece along the direction | 59.7% | 4.3% | 86% |
+| Only the rest | 5.0% | 0.0% | 80% |
+| A random push of the same size as the rest | 86.2% | 48.7% | 72% |
 
 </div>
 
-Each piece alone brings harmful refusals down to about a third, and only both together bring them close to zero. The random push does not lower refusals, so the effect of "the rest" belongs to this neuron and is not just what any big push does.
+With the first direction, each piece alone brings harmful refusals down to about a third. With the other two, the piece along the direction does less (56% to 60% of harmful prompts still refused) and the rest alone almost reproduces the whole neuron (5% to 6%). So the exact split depends on the direction, but two things hold in all three versions. The piece along the direction always carries a real share of the effect, and the rest always carries as much or more. The random push of the same size as the rest never lowers refusals, so the effect of "the rest" belongs to this neuron and is not just what any big push does.
 
 ### It Is Not the Only Neuron
 
