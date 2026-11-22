@@ -36,13 +36,13 @@ toc:
   - name: How a Neuron Can Push Along a Direction
   - name: Results
     subsections:
+      - name: Experimental Setup
       - name: The Neuron Really Does Push Along the Direction
       - name: Both Results Hold Up on Llama
       - name: The Neuron Has Two Halves
       - name: It Is Not the Only Neuron
       - name: Over-Refusal Falls Faster, but Not Cleanly
       - name: Is Separating Enough?
-  - name: Experimental Setup
 
 # Styles for the definition boxes and tables (same look as the other post)
 _styles: >
@@ -198,7 +198,18 @@ So every neuron adds something to the hidden state, and we can now study how muc
 
 ## Results
 
-We ran everything on Llama-3.1-8B-Instruct, at layer 11. We counted a response as a refusal using a larger language model as the judge. Because a strong change to a neuron can simply break the model, we also measured the model's accuracy on maths problems (GSM8K) next to the important results. The full setup is at the end of the post.
+We ran everything on Llama-3.1-8B-Instruct, at layer 11. Because a strong change to a neuron can simply break the model, we also measured the model's accuracy on maths problems (GSM8K) next to the important results. First, the setup used throughout.
+
+### Experimental Setup
+
+* **Model.** Llama-3.1-8B-Instruct, in 16-bit precision. Answers use greedy decoding, up to 512 new tokens.
+* **The refusal direction.** We followed the recipe of Arditi et al., with 64 harmful prompts from AdvBench <d-cite key="zou2023universal"></d-cite> and 64 harmless prompts from Alpaca, at the last prompt word, after layer 11.
+* **Harmful prompts.** HarmBench <d-cite key="mazeika2024harmbench"></d-cite> (159 prompts in our test split) and WildJailbreak <d-cite key="jiang2024wildteaming"></d-cite>, a mix of plain and disguised harmful requests.
+* **Harmless but risky-looking prompts.** OR-Bench-Hard <d-cite key="cui2025orbench"></d-cite> (1,319 prompts, with 300 to 654 of them used in each test) and XSTest <d-cite key="rottger2024xstest"></d-cite>.
+* **Is the model still working?** Accuracy on GSM8K maths problems. A large drop is a warning sign.
+* **Deciding what counts as a refusal.** A larger language model (Qwen3.5-27B) reads each prompt and answer and labels it as full compliance, full refusal or partial refusal, following the labels used in XSTest <d-cite key="rottger2024xstest"></d-cite>. We count only full refusal.
+* **Same prompts within a table.** Inside each table, every row uses exactly the same prompts, so the rows can be compared directly.
+
 
 ### The Neuron Really Does Push Along the Direction
 
@@ -317,17 +328,6 @@ Then we pinned the top neurons from these rankings to -4 and looked at what happ
 </div>
 
 Of the four best neurons for telling harmful from harmless, only one (10096) behaves like 4258. One (9056) lowers refusals only by breaking the model, one changes little, and one (6491) actually raises refusals. The reverse happens too: neuron 12227 ranks 12,876th of 14,336 at telling refused from answered prompts, and yet setting it to -1 lowered over-refusal from 28.0% to 8.7%. In our tests, how well a neuron separates prompts did not tell us whether changing it changes refusals.
-
-
-## Experimental Setup
-
-* **Model.** Llama-3.1-8B-Instruct, in 16-bit precision. Answers use greedy decoding, up to 512 new tokens.
-* **The refusal direction.** We followed the recipe of Arditi et al., with 64 harmful prompts from AdvBench <d-cite key="zou2023universal"></d-cite> and 64 harmless prompts from Alpaca, at the last prompt word, after layer 11.
-* **Harmful prompts.** HarmBench <d-cite key="mazeika2024harmbench"></d-cite> (159 prompts in our test split) and WildJailbreak <d-cite key="jiang2024wildteaming"></d-cite>, a mix of plain and disguised harmful requests.
-* **Harmless but risky-looking prompts.** OR-Bench-Hard <d-cite key="cui2025orbench"></d-cite> (1,319 prompts, with 300 to 654 of them used in each test) and XSTest <d-cite key="rottger2024xstest"></d-cite>.
-* **Is the model still working?** Accuracy on GSM8K maths problems. A large drop is a warning sign.
-* **Deciding what counts as a refusal.** A larger language model (Qwen3.5-27B) reads each prompt and answer and labels it as full compliance, full refusal or partial refusal, following the labels used in XSTest <d-cite key="rottger2024xstest"></d-cite>. We count only full refusal.
-* **Same prompts within a table.** Inside each table, every row uses exactly the same prompts, so the rows can be compared directly.
 
 
 <!-- TODO (author): add the results for the other models (same steps). -->
