@@ -326,7 +326,7 @@ Of the four best neurons for telling harmful from harmless, only one (10096) beh
 * **Harmful prompts.** HarmBench <d-cite key="mazeika2024harmbench"></d-cite> (159 prompts in our test split) and WildJailbreak <d-cite key="jiang2024wildteaming"></d-cite>, a mix of plain and disguised harmful requests.
 * **Harmless but risky-looking prompts.** OR-Bench-Hard <d-cite key="cui2025orbench"></d-cite> (1,319 prompts, with 300 to 654 of them used in each test) and XSTest <d-cite key="rottger2024xstest"></d-cite>.
 * **Is the model still working?** Accuracy on GSM8K maths problems. A large drop is a warning sign.
-* **Deciding what counts as a refusal.** A larger language model (Qwen3.5-27B) reads each prompt and answer and labels it as full compliance, full refusal or partial refusal. We count only full refusal. On a rough check of 150 answers against another labeller's labels, the two agreed about 95% of the time.
+* **Deciding what counts as a refusal.** A larger language model (Qwen3.5-27B) reads each prompt and answer and labels it as full compliance, full refusal or partial refusal, following the labels used in XSTest <d-cite key="rottger2024xstest"></d-cite>. We count only full refusal.
 * **Same prompts within a table.** Inside each table, every row uses exactly the same prompts, so the rows can be compared directly.
 
 
