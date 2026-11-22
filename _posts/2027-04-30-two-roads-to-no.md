@@ -178,7 +178,7 @@ Arditi et al. and Kazemi et al. study the same behavior, but they point at very 
 ### What we found
 
 * **The neuron and the direction are linked.** When a prompt is harmful, neuron 4258 pushes the model's hidden state along the refusal direction about nine times more than any other neuron in its layer.
-* **Both results hold up on Llama.** Removing the direction cuts refusals on harmful requests from 83% to 14.5%. Setting the neuron to -4, as Kazemi et al. do, cuts them to 0.6%.
+* **Both results hold up on Llama.** Removing the direction cuts refusals on harmful requests from 83% to 17.6%. Setting the neuron to -4, as Kazemi et al. do, cuts them to 0.6%.
 * **The neuron's effect has two halves.** The part of its output along the direction carries a real share of the effect (setting only that part to -4 takes HarmBench refusals from 83% to between 34% and 60%, depending on which version of the direction is used), but the rest carries as much or more. Both together remove almost all refusals.
 * **Over-refusal falls faster, but not cleanly.** Both kinds of refusal fall when the neuron is pushed down. At gentle settings, refusals on harmless but risky-looking prompts fall by a larger factor than HarmBench refusals, but WildJailbreak refusals fall by a similar factor. Strong changes remove both.
 * **Telling prompts apart is not the same as controlling the model.** Neurons that are best at separating harmful from harmless prompts mostly did not lower refusals when we changed them.
@@ -226,7 +226,7 @@ Before going further, we checked that the main result of each study holds on thi
 | What we changed | Harmful prompts refused (HarmBench, 159 prompts) | Harmful prompts refused (WildJailbreak, 200 prompts) |
 | :--- | :---: | :---: |
 | Nothing | 83.0% | 27.5% |
-| Removed the direction (layers 11 to 21) | 14.5% | 17.5% |
+| Removed the direction (at layer 11) | 17.6% | 2.0% |
 | Neuron 4258 halved | 77.4% | 23.0% |
 | Neuron 4258 switched off (pin to 0) | 74.8% | 19.5% |
 | Neuron 4258 pinned to -1 | 55.3% | 5.5% |
@@ -266,6 +266,48 @@ There is a catch: what counts as "the piece along the direction" depends on whic
 </div>
 
 With the first direction, each piece alone brings harmful refusals down to about a third. With the other two, the piece along the direction does less (56% to 60% of harmful prompts still refused) and the rest alone almost reproduces the whole neuron (5% to 6%). So the exact split depends on the direction, but two things hold in all three versions. The piece along the direction always carries a real share of the effect, and the rest always carries as much or more. The random push of the same size as the rest never lowers refusals, so the effect of "the rest" belongs to this neuron and is not just what any big push does.
+
+<!--
+DATA FOR A SECTION "Is Arditi's Direction the Right One?"  (Llama-3.1-8B-Instruct, everything at layer 11)
+
+Arditi's direction (unit length) = 0.524 x (neuron 4258's direction) + 0.852 x (a direction at right angles to it).
+Share of its length squared: about 27% lies along the neuron's direction, about 73% is the rest.
+
+Removing a direction from the hidden state at layer 11  (HarmBench refused / OR-Bench-Hard refused / maths accuracy)
+  nothing removed                                    83.0% / 28.0% / 85%
+  Arditi's whole direction                           17.6% /  0.0% / 86%
+  only the part along the neuron's direction         44.7% /  1.0% / 88%
+  only the rest of Arditi's direction                63.5% /  5.7% / 87%
+  both parts together                                 6.9% /  0.0% / 86%
+  (WildJailbreak harmful, Arditi's whole direction removed at layer 11: 2.0%, from 27.5%)
+
+Same-sized push against refusal (size 3.35) at layer 11 along each direction  (HarmBench / OR-Bench-Hard / maths)
+  the neuron's direction                                  3.8% /  0.0% / 75%
+  Arditi's direction                                      5.0% /  0.0% / 73%
+  Arditi's direction without the neuron's own write       8.2% /  0.0% / 75%
+  refused minus answered (harmful prompts only)           6.9% /  0.0% / 74%
+  a random direction                                     84.9% / 49.3% / 74%
+  Twice that push (6.7) breaks the model: maths falls to 3% to 4%.
+
+Push towards refusal at layer 11 on 200 harmless WildJailbreak prompts  (refused; unchanged model 1.0%)
+  Arditi's direction, size 1.0: 35.0%    the neuron's direction, size 1.0: 29.5%    the neuron's direction, size 4.25: 98.0%
+
+How the directions line up (cosine)
+  neuron vs Arditi 0.52 | neuron vs Arditi without the neuron's own write 0.32 | neuron vs refused-minus-answered 0.38
+  Arditi vs refused-minus-answered 0.52 | Arditi without own write vs refused-minus-answered 0.48 | anything vs random about 0.01
+
+Suggested text:
+Of the two parts of Arditi's direction, the part that lies along the neuron's direction is the closer approximation of what drives
+refusal. It is the smaller part, about a quarter of the direction, yet removing it lowers refusals about twice as much as removing the
+other three quarters (83% to 44.7%, against 83% to 63.5%). The rest of the direction still matters: removing Arditi's whole direction
+does more than removing either part alone (17.6%), and removing both parts does the most (6.9%).
+
+Widget (paste where the section goes):
+<div class="l-body-outset">
+  <iframe src="assets/html/2027-04-30-two-roads-to-no/direction_test.html" frameborder="0" scrolling="no" height="640px" width="100%" style="border-radius:14px;border:1px solid #e1e4e8;display:block;"></iframe>
+</div>
+(when pasting, wrap the src in the relative_url filter like the other post does)
+-->
 
 ### It Is Not the Only Neuron
 
