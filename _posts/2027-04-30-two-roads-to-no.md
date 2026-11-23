@@ -305,6 +305,27 @@ How to phrase the result depending on outcome
 - If only A holds: "Arditi's direction misses part of what the neuron writes for refusal; a direction orthogonal to it carries a large share of the effect."
 - If T1 and T2 both favour the neuron: "On this model, the neuron's direction is at least as effective as Arditi's and carries refusal-relevant content Arditi's direction does not." Say "at least as effective", not "closer to the true direction", unless T4 and T5 also support it.
 - If T1 shows no per-unit gap: drop B and keep one sentence saying the size explains the table.
+
+RESULTS SO FAR (Llama-3.1-8B-Instruct, layer 11, standard suite; files: results/rq11/SUMMARY.md, results/rq11/v2_scores.json). Numbers = HarmBench refused / OR-Bench-Hard refused / maths accuracy; unchanged model 83.0 / 28.0 / 85.
+q = the part of neuron 4258's output at right angles to Arditi's direction, scaled to length 1 (cos with Arditi 0, with the neuron's direction 0.85). Arditi's direction = 0.52 x neuron's direction + 0.85 x (direction at right angles).
+
+Note on the "observation behind it": in the two clean versions the "rest" piece is NOT at right angles to Arditi's real layer-11 direction. It still carries +0.18 (own write removed) and +0.23 (layer 10) along it, about as much as the "along" piece (+0.26, +0.21). Only in version 1 is the split truly perpendicular, and there both pieces do the same (34.0% vs 33.3%) even though the right-angled piece is 1.6 times longer.
+
+T1 same-size push AGAINST refusal (unit directions, same absolute size c)
+  c=0.5  Arditi 69.2/10.7/86   neuron's direction 70.4/10.7/87   q 78.0/20.3/87
+  c=1    Arditi 62.3/3.7/84    neuron's direction 63.5/4.3/86    q 71.7/9.3/87
+  c=2    Arditi 36.5/0.3/84    neuron's direction 45.3/0.3/82    q 60.4/3.0/82
+  c=3.35 Arditi 5.0/0.0/73     neuron's direction 3.8/0.0/75     q 33.3/0.0/73     comparison neuron 1404's direction 69.8/17.0/81
+  -> per unit: Arditi >= neuron's direction > q. q needs about 1.7 times the size for the same HarmBench effect (q at 3.35 = 33.3; Arditi at 2 = 36.5), and then costs more maths (73 vs 84). The table gap in the pinning test was mostly size (right-angled piece 1.6 to 2.9 times longer). B (neuron's direction better than Arditi's) is not supported.
+T3 removal at layer 11: q alone 77.4/18.7/85 | comparison neuron 1404's direction 83.6/27.7/87 | Arditi + q together 6.9/0.0/87 (same plane as the earlier two-part removal, same result) | Arditi alone 17.6/0.0/86
+T4 add towards refusal, 200 harmless WildJailbreak prompts (unchanged 1.0% refused):
+  +1.0: Arditi 35.0, neuron's direction 29.5, q 8.0, comparison 1.5  |  +4.25: Arditi 100.0, neuron's direction 98.0, q 74.0, comparison 2.0
+T5 AUROC of the projection at layer 11 (harmful vs harmless / refused vs answered on harmless OR-Bench / refused vs answered on harmful WildJailbreak):
+  Arditi 1.00 / 0.72 / 0.63 | neuron's direction 1.00 / 0.75 / 0.65 | q 0.58 / 0.70 / 0.65 | comparison neuron 0.26 / 0.38 / 0.55 | random 0.18 / 0.46 / 0.50  (values far below 0.5 mean the sign is arbitrary)
+Reading: A is supported (q alone lowers refusals when removed or pushed, raises them when added, and tells refused from answered on harmless prompts about as well as Arditi, although it does not tell harmful from harmless). C (q is not refusal) is weakened by T5 and T4. B is not supported.
+Caveats: comparison neuron's direction at 3.35 also lowers OR-Bench (28 to 17), so it is not a perfectly null control at that size. Arditi's direction is an estimate (64 + 64 prompts); at right angles to the estimate is not at right angles to the true direction. Wollschlager et al. (ICML 2025) say orthogonal does not mean independent.
+Other neurons' right-angled parts (10096, 12227, 5147, 1404): results/rq12, running, to be added here.
+
 -->
 
 ### Taking Arditi's Direction Apart
