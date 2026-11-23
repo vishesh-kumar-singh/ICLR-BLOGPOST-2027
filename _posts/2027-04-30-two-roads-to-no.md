@@ -393,7 +393,7 @@ What we see:
 * **They are not stronger than 4258.** At both settings, 4258 lowers refusals the most. The two new neurons sit close to 10096, with 8632 a little weaker than 9439.
 * **Over-refusal falls by more than harmful refusals at a push of 1.** With 9439, OR-Bench-Hard refusals go from 28.0% to 4.0% (a factor of 7), while HarmBench goes from 83.0% to 67.9% (a factor of 1.2). With 8632, the factors are 3.2 and 1.2. This is the same gentle-setting pattern as for 4258. In points, the harmful sets fall by 15 to 17 for the two new neurons, whereas OR-Bench-Hard falls by 24 (9439) and 19 (8632). WildJailbreak and XSTest again show this less clearly.
 * **A strong push can cost the model its maths.** At 4, neuron 9439 leaves maths accuracy at 43%, much lower than the 74% to 79% of the others, so that result should not be read as clean control.
-* **Nothing separates the two kinds of refusal.** At a push of 1 or 4, whenever harmless refusals fall, harmful refusals fall too, and at 4 both are close to zero.
+* **There is some separation, but not a clean one.** At a push of 1, over-refusal falls clearly more than harmful refusals, as shown above, so the two do not move exactly together. But harmful refusals still fall by 15 to 17 points, WildJailbreak and XSTest show the gap less, and at a push of 4 both kinds are close to zero. We did not find a setting that removes over-refusal while leaving harmful refusals alone.
 
 The charts above can be used for these neurons too, and the viewer below shows real answers for a few prompts as each neuron is pushed.
 
