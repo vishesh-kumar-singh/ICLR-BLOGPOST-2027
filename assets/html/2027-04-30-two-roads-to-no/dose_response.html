@@ -30,22 +30,35 @@
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin:0; padding:16px; background:var(--bg); color:var(--ink); }
 .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; box-shadow:0 2px 10px var(--shadow); max-width:760px; margin:0 auto; }
 h3 { margin:0 0 4px; font-size:17px; } .sub { color:var(--muted); font-size:13px; margin-bottom:12px; }
-.row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px; } .row label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:3px; flex:1 1 200px; }
-select { font:inherit; font-size:14px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--field); color:var(--ink); }
-.slider { margin:8px 0 14px; } input[type=range] { width:100%; accent-color: var(--harm); }
+.row { display:flex; gap:10px; margin-bottom:12px; } .row label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:3px; flex:1 1 0; min-width:0; }
+@media (max-width:560px) { .row { flex-wrap:wrap; } .row label { flex:1 1 100%; } }
+select { width:100%; font:inherit; font-size:14px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--field); color:var(--ink); }
+.note { font-size:12px; color:var(--muted); min-height:17px; }
+.slider { margin:8px 0 6px; } input[type=range] { width:100%; accent-color: var(--harm); }
 .ticks { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:2px; } .ticks span { flex:1; text-align:center; } .ticks span.on { color:var(--ink); font-weight:600; }
-.group { margin:12px 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
-.bar { margin:7px 0; } .bar .name { display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px; } .bar .name b { font-weight:600; }
-.track { position:relative; height:14px; background:var(--track); border-radius:7px; } .fill { position:absolute; left:0; top:0; height:100%; border-radius:7px; transition:width .25s; }
-.base { position:absolute; top:-3px; width:2px; height:20px; background:var(--mark); opacity:.55; } .track.thin { height:7px; margin-top:4px; } .track.thin .fill { border-radius:4px; }
-.readout { margin-top:14px; padding:10px 12px; border-radius:10px; background:var(--track); font-size:13.5px; line-height:1.5; }
-.legend { font-size:11.5px; color:var(--muted); margin-top:8px; } .note { font-size:12px; color:var(--muted); margin-top:2px; }
+
+/* Vertical bar chart: fixed size, so the widget never changes height */
+.chart { display:grid; grid-template-columns:34px 1fr; margin-top:28px; }
+.cols5 { display:grid; grid-template-columns:repeat(5, 1fr); }
+.ghead { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); text-align:center; padding:0 4px 5px; border-bottom:3px solid var(--gc); margin:0 3px; line-height:1.25; display:flex; align-items:flex-end; justify-content:center; min-height:34px; }
+.yaxis { position:relative; height:230px; margin-top:20px; } .yaxis span { position:absolute; right:6px; font-size:10.5px; color:var(--muted); transform:translateY(50%); }
+.plot { position:relative; height:230px; margin-top:20px; border-bottom:1px solid var(--muted); }
+.grid { position:absolute; left:0; right:0; border-top:1px solid var(--line); }
+.col { position:relative; height:230px; display:flex; align-items:flex-end; justify-content:center; gap:10px; }
+.b { position:relative; z-index:1; width:40px; border-radius:6px 6px 0 0; transition:height .25s; min-height:1px; }
+.plot.cmp .b { width:30px; }
+.b .v { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); font-size:11.5px; font-weight:600; white-space:nowrap; margin-bottom:3px; color:var(--ink); background:var(--panel); padding:0 2px; border-radius:3px; }
+.base { position:absolute; left:8%; right:8%; border-top:2px dashed var(--mark); opacity:.55; pointer-events:none; }
+.labels .lab { text-align:center; font-size:12px; font-weight:600; padding:7px 2px 0; line-height:1.25; } .labels .lab small { display:block; font-weight:400; font-size:11px; color:var(--muted); margin-top:2px; }
+.readout { margin-top:14px; padding:10px 12px; border-radius:10px; background:var(--track); font-size:13.5px; line-height:1.5; min-height:63px; }
+.legend { font-size:11.5px; color:var(--muted); margin-top:8px; min-height:17px; line-height:1.4; }
+.sw { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:3px; }
 </style>
 </head>
 <body>
 <div class="card">
   <h3>Turn the neuron down</h3>
-  <div class="sub">Pick a model and a neuron, then drag the slider to push the neuron further against refusal. Bars show how often the model says no. The black tick marks the unchanged model.</div>
+  <div class="sub">Pick a model and a neuron, then drag the slider to push the neuron further against refusal. Bars show how often the model says no (for maths, how often it is right). The dashed line marks the unchanged model.</div>
   <div class="row">
     <label>Model <select id="model"></select></label>
     <label>Neuron <select id="neuron"></select></label>
@@ -53,7 +66,11 @@ select { font:inherit; font-size:14px; padding:6px 8px; border-radius:8px; borde
   </div>
   <div class="note" id="neuronNote"></div>
   <div class="slider"><input type="range" id="slide" min="0" max="4" step="1" value="0"><div class="ticks" id="ticks"></div></div>
-  <div id="bars"></div>
+  <div class="chart">
+    <div></div><div class="cols5" id="heads"></div>
+    <div class="yaxis" id="yaxis"></div><div class="plot" id="plot"></div>
+    <div></div><div class="cols5 labels" id="labels"></div>
+  </div>
   <div class="readout" id="readout"></div>
   <div class="legend" id="legend"></div>
 </div>
@@ -62,10 +79,18 @@ var DATA = {"models": {"llama31-8b": {"label": "Llama-3.1-8B-Instruct", "layer":
 var $ = function (id) { return document.getElementById(id); };
 var state = { model: Object.keys(DATA.models)[0], neuron: '4258', cmp: 'none', step: 0 };
 var GROUPS = [
-  { title: 'Harmful requests (a higher bar means more refusals)', color: 'var(--harm)', items: ['harmbench', 'wildjailbreak_harmful'] },
-  { title: 'Harmless but risky-looking requests (a higher bar means more over-refusal)', color: 'var(--safe)', items: ['orbench_hard', 'xstest_safe'] },
-  { title: 'Is the model still working?', color: 'var(--math)', items: ['gsm8k'] }
+  { title: 'Harmful requests<br>(higher = more refusals)', color: 'var(--harm)', span: 2 },
+  { title: 'Harmless but risky-looking<br>(higher = more over-refusal)', color: 'var(--safe)', span: 2 },
+  { title: 'Still working?<br>(higher = better)', color: 'var(--math)', span: 1 }
 ];
+var COLS = [
+  { b: 'harmbench', name: 'HarmBench', color: 'var(--harm)' },
+  { b: 'wildjailbreak_harmful', name: 'WildJailbreak', color: 'var(--harm)' },
+  { b: 'orbench_hard', name: 'OR-Bench-Hard', color: 'var(--safe)' },
+  { b: 'xstest_safe', name: 'XSTest', color: 'var(--safe)' },
+  { b: 'gsm8k', name: 'Maths (GSM8K)', color: 'var(--math)' }
+];
+var TICKS = [0, 25, 50, 75, 100];
 function M() { return DATA.models[state.model]; }
 function fill(sel, opts, val) { sel.innerHTML = ''; opts.forEach(function (o) { var e = document.createElement('option'); e.value = o.v; e.textContent = o.t; if (o.d) e.disabled = true; sel.appendChild(e); }); sel.value = val; }
 function init() {
@@ -73,6 +98,8 @@ function init() {
   Object.keys(DATA.coming).forEach(function (k) { mo.push({ v: k, t: DATA.coming[k] + ' (coming soon)', d: true }); });
   fill($('model'), mo, state.model); refreshNeurons();
   $('ticks').innerHTML = DATA.settings.map(function (s, i) { return '<span id="t' + i + '">' + s[1] + '</span>'; }).join('');
+  $('heads').innerHTML = GROUPS.map(function (g) { return '<div class="ghead" style="grid-column:span ' + g.span + ';--gc:' + g.color + '">' + g.title + '</div>'; }).join('');
+  $('yaxis').innerHTML = TICKS.map(function (t) { return '<span style="bottom:' + t + '%">' + t + '%</span>'; }).join('');
   $('model').onchange = function () { state.model = this.value; refreshNeurons(); render(); };
   $('neuron').onchange = function () { state.neuron = this.value; render(); };
   $('compare').onchange = function () { state.cmp = this.value; render(); };
@@ -85,13 +112,10 @@ function refreshNeurons() {
   fill($('neuron'), ks.map(function (k) { return { v: k, t: ns[k].label }; }), state.neuron);
   fill($('compare'), [{ v: 'none', t: 'nothing' }].concat(ks.map(function (k) { return { v: k, t: ns[k].label }; })), state.cmp);
 }
-function val(nk, step, b) { var s = M().neurons[nk].scores[DATA.settings[step][0]][b]; return s; }
-function bar(b, color) {
-  var cur = val(state.neuron, state.step, b), base = val(state.neuron, 0, b), L = DATA.bench_labels[b];
-  var h = '<div class="bar"><div class="name"><b>' + L + '</b><span>' + cur.rate.toFixed(1) + '%  <span style="color:var(--muted)">(' + cur.k + ' of ' + cur.n + ')</span></span></div>';
-  h += '<div class="track"><div class="fill" style="width:' + cur.rate + '%;background:' + color + '"></div><div class="base" style="left:calc(' + base.rate + '% - 1px)"></div></div>';
-  if (state.cmp !== 'none') { var c = val(state.cmp, state.step, b); h += '<div class="track thin"><div class="fill" style="width:' + c.rate + '%;background:var(--cmp)"></div></div><div class="note">' + M().neurons[state.cmp].label + ': ' + c.rate.toFixed(1) + '%</div>'; }
-  return h + '</div>';
+function val(nk, step, b) { return M().neurons[nk].scores[DATA.settings[step][0]][b]; }
+function barHtml(nk, c, color) {
+  var s = val(nk, state.step, c.b);
+  return '<div class="b" style="height:' + s.rate + '%;background:' + color + '" title="' + M().neurons[nk].label + ': ' + s.rate.toFixed(1) + '% (' + s.k + ' of ' + s.n + ')"><span class="v">' + s.rate.toFixed(1) + '%</span></div>';
 }
 function factor(b) {
   var base = val(state.neuron, 0, b).rate, cur = val(state.neuron, state.step, b).rate;
@@ -100,16 +124,26 @@ function factor(b) {
   return (base / cur).toFixed(1) + ' times lower';
 }
 function render() {
-  var nm = M().neurons[state.neuron]; $('neuronNote').textContent = nm.label + ': ' + nm.note + '.';
+  var nm = M().neurons[state.neuron], cmp = state.cmp !== 'none';
+  $('neuronNote').textContent = nm.label + ': ' + nm.note + '.';
   DATA.settings.forEach(function (s, i) { $('t' + i).className = i === state.step ? 'on' : ''; });
-  var h = ''; GROUPS.forEach(function (g) { h += '<div class="group">' + g.title + '</div>'; g.items.forEach(function (b) { h += bar(b, g.color); }); });
-  $('bars').innerHTML = h;
+  var p = TICKS.map(function (t) { return '<div class="grid" style="bottom:' + t + '%"></div>'; }).join('');
+  p += '<div class="cols5" style="position:absolute;inset:0">';
+  COLS.forEach(function (c) {
+    var base = val(state.neuron, 0, c.b).rate;
+    p += '<div class="col">' + barHtml(state.neuron, c, c.color) + (cmp ? barHtml(state.cmp, c, 'var(--cmp)') : '') + '<div class="base" style="bottom:' + base + '%"></div></div>';
+  });
+  $('plot').innerHTML = p + '</div>';
+  $('plot').className = 'plot' + (cmp ? ' cmp' : '');
+  $('labels').innerHTML = COLS.map(function (c) { var s = val(state.neuron, state.step, c.b); return '<div class="lab">' + c.name + '<small>' + s.k + ' of ' + s.n + '</small></div>'; }).join('');
   if (state.step === 0) { $('readout').textContent = 'This is the unchanged model. Drag the slider to push the neuron down.'; }
   else {
     var hb = factor('harmbench'), ob = factor('orbench_hard');
     $('readout').innerHTML = '<b>' + DATA.settings[state.step][1] + ':</b> refusals on HarmBench are ' + hb + ', and refusals on harmless but risky-looking OR-Bench-Hard prompts are ' + ob + '. Maths accuracy goes from ' + val(state.neuron, 0, 'gsm8k').rate.toFixed(0) + '% to ' + val(state.neuron, state.step, 'gsm8k').rate.toFixed(0) + '%.';
   }
-  $('legend').innerHTML = (state.cmp !== 'none') ? '<span style="color:var(--cmp)">Thin amber bar</span>: the neuron chosen under "Compare with", at the same slider position.' : '';
+  $('legend').innerHTML = cmp
+    ? 'Coloured bars: ' + nm.label + '. <span class="sw" style="background:var(--cmp)"></span>Amber bars: ' + M().neurons[state.cmp].label + '.'
+    : '';
 }
 init();
 </script>

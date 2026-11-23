@@ -34,12 +34,11 @@ toc:
       - name: Study of refusal
       - name: What we found
   - name: How a Neuron Can Push Along a Direction
-  - name: Results
+  - name: Experimental Setup
+  - name: Observations
     subsections:
-      - name: Experimental Setup
       - name: The Neuron Really Does Push Along the Direction
-      - name: Both Results Hold Up on Llama
-      - name: The Neuron Has Two Halves
+      - name: Breaking The Neuron into Two
       - name: Taking Arditi's Direction Apart
       - name: It Is Not the Only Neuron
       - name: Over-Refusal Falls Faster, but Not Cleanly
@@ -199,11 +198,7 @@ $$
 
 So every neuron adds something to the hidden state, and we can now study how much of what it adds points along the refusal direction.
 
-## Results
-
-We ran everything on Llama-3.1-8B-Instruct, at layer 11. Because a strong change to a neuron can simply break the model, we also measured the model's accuracy on maths problems (GSM8K) next to the important results. First, the setup used throughout.
-
-### Experimental Setup
+## Experimental Setup
 
 * **Model.** Llama-3.1-8B-Instruct, in 16-bit precision. Answers use greedy decoding, up to 512 new tokens.
 * **The refusal direction.** We followed the recipe of Arditi et al., with 64 harmful prompts from AdvBench <d-cite key="zou2023universal"></d-cite> and 64 harmless prompts from Alpaca, at the last prompt word, after layer 11.
@@ -213,16 +208,9 @@ We ran everything on Llama-3.1-8B-Instruct, at layer 11. Because a strong change
 * **Deciding what counts as a refusal.** A larger language model (Qwen3.5-27B) reads each prompt and answer and labels it as full compliance, full refusal or partial refusal, following the labels used in XSTest <d-cite key="rottger2024xstest"></d-cite>. We count only full refusal.
 * **Same prompts everywhere.** Every table and chart in this post uses exactly these prompts, drawn with a fixed random seed (0), so the same setting gives the same number wherever it appears.
 
+## Observations
 
-### The Neuron Really Does Push Along the Direction
-
-For each of the 14,336 neurons in layer 11, we measured the cosine similarity between its output vector and the refusal direction. Neuron 4258 scores 0.52, and the next best neuron scores 0.19. For scale, a random direction in 4,096 dimensions typically has a cosine of about ±0.016. Part of the 0.52 is circular, though: the refusal direction at layer 11 already contains what the neuron itself writes. With the neuron's own write removed from the direction, its cosine is 0.32, and with the direction measured just before layer 11 it is 0.34. In both cases it is still the top neuron of the layer, with the next best at about 0.17 and 0.16.
-
-A large cosine is not enough for a neuron to move the hidden state in practice: it also has to change its activity between harmful and harmless prompts. Neuron 4258 averages 1.19 on harmful prompts and 0.01 on harmless ones, which moves the hidden state about 0.52 along the direction. The next neuron, 10096, moves it about 0.06, roughly nine times less. Neuron 12227, second by cosine, is slightly more active on harmless prompts, so it moves the hidden state slightly the wrong way. To put this in perspective, all 14,336 neurons of layer 11 together move the hidden state of harmful prompts about 1.3 further along the direction than that of harmless prompts, and neuron 4258 alone accounts for about 40% of it.
-
-### Both Results Hold Up on Llama
-
-Before going further, we checked that the main result of each study holds on this model. We tried the direction first, then changed neuron 4258 by different amounts. "Pin to 0" means switching the neuron off, and "-4" is the setting used by Kazemi et al.
+We first tried to reproduced what the authors of the papers claimed. We tried the direction provided by Arditi et al. first,  the refusal indeed redused from 83% for Harmbench to 17.6% and from 27.5% to 2.0% for WildJailbreak. Then we used the gradient loss method to find the most important neuron, which turned out to be neuron 4258 of layer 11 for Llama3.1-8B-Instruct, exactly matching the paper's findings. We then changed neuron 4258 by different amounts. "Pin to 0" means switching the neuron off, and "-4" is the setting used by Kazemi et al. We were largly able to verify the claims made in the respective papers.
 
 <div class="comparison-table" markdown="block">
 
@@ -237,19 +225,29 @@ Before going further, we checked that the main result of each study holds on thi
 
 </div>
 
-Removing the direction lowers refusals strongly. Adding it, on the other hand, makes the model refuse every one of 200 harmless prompts (from 1.0% before). The neuron behaves as Kazemi et al. report at -4, where the model almost never refuses. Switching it off barely matters, though, so the effect depends on how far the neuron is pushed. The chart below lets you move that setting yourself, for this neuron and for the others we study later.
+Now checked the relation between the direction predicted by Arditi et al. and the direction in which neuron 4258 writes.
+
+### The Neuron Really Does Push Along the Direction
+
+For each of the 14,336 neurons in layer 11, we measured the cosine similarity between its output vector and the refusal direction predicted by Arditi et al. Neuron 4258 scores 0.52, and the next best neuron scores 0.19. For scale, a random direction in 4,096 dimensions typically has a cosine of about ±0.016. Though the refusal direction at layer 11 already contains what neuron 4258 writes. So we removed the, neuron's own write from the direction, its cosine simmilarity turned out to be 0.32, and with the direction measured just before layer 11 it is 0.34. In both cases it is still the top neuron of the layer, with the next best at about 0.17 and 0.16.
+
+We then tested, if these other neurons with high cosine similarity also change their outputs on harmful vs harmless prompts. First testing their activation shows that, neuron 4258 averages 1.19 on harmful prompts and 0.01 on harmless ones, which moves the hidden state about 0.52 along the direction. The next neuron, 10096, moves it about 0.06, roughly nine times less. Neuron 12227, second by cosine, is slightly more active on harmless prompts, so it moves the hidden state slightly the opposite way. In total, all 14,336 neurons of layer 11 together move the hidden state of harmful prompts about 1.3 further along the direction predicted by Arditi et al. than that of harmless prompts, and neuron 4258 alone accounts for about 40% of the difference.
+
+The neuron behaves as Kazemi et al. report at -4, where the model almost never refuses. Switching it to 0 barely matters, though, so the effect depends on how far the neuron is pushed, as switching to 0 is more like removing the effect of neuron, and pinning to -4 is like adding an extra push. We also tried three other neurons from the same layer that are about as active but point almost at right angles to the direction. Switching them off changed nothing. Pinning them to -4 sometimes lowered refusals and sometimes raised them: one of them lowered the HarmBench rate to 45.3% but pushed the WildJailbreak rate up to 72.5%. A very strong push on any neuron can disturb the model, so we keep this in mind for every "-4" result below.
+
+The widget below lets you move that setting yourself, for the neuron 4258 and for the others we study later.
 
 <div class="l-body-outset">
-  <iframe src="{{ 'assets/html/2027-04-30-two-roads-to-no/dose_response.html' | relative_url }}" frameborder="0" scrolling="no" height="760px" width="100%" style="border-radius:14px;border:1px solid #e1e4e8;display:block;"></iframe>
+  <iframe src="{{ 'assets/html/2027-04-30-two-roads-to-no/dose_response.html' | relative_url }}" frameborder="0" scrolling="no" height="730px" width="100%" style="border-radius:14px;border:1px solid #e1e4e8;display:block;"></iframe>
 </div>
 
-We also tried three other neurons from the same layer that are about as active but point almost at right angles to the direction. Switching them off changed nothing. Pinning them to -4 sometimes lowered refusals and sometimes raised them: one of them lowered the HarmBench rate to 45.3% but pushed the WildJailbreak rate up to 72.5%. A very strong push on any neuron can disturb the model, so we keep this in mind for every "-4" result below.
 
-### The Neuron Has Two Halves
 
-Neuron 4258's output vector can be split into two pieces: the piece that points along the refusal direction, and everything else. We changed one piece at a time, to -4, and left the other alone. As a check, we also pushed in a random direction at right angles to the refusal direction, with the same size as "everything else".
+### Breaking The Neuron into Two
 
-There is a catch: what counts as "the piece along the direction" depends on which version of the refusal direction we use. We have three. The first is the one used so far, measured after layer 11. It already contains what the neuron itself writes, so we also tried the direction with the neuron's own write removed, and the direction measured just before layer 11. The three give different splits of the same neuron: the piece along the direction has a length of 0.44, 0.27 and 0.29, against 0.71 to 0.79 for the rest.
+Neuron 4258's output vector can be split into two pieces: the piece that points along the refusal direction predicted by Arditi et al., and everything else. We changed one piece at a time, to -4, and left the other alone. As a check, we also pushed in a random direction at right angles to the refusal direction, with the same size as "everything else".
+
+We used 3 versions of the refusal direction predicted by Arditi et al. The first is the one used so far, measured after layer 11. It already contains what the neuron itself writes, so we also tried the direction with the neuron's own write removed, and the direction measured just before layer 11. The three give different splits of the same neuron: the piece along the direction has a length of 0.44, 0.27 and 0.29, against 0.71 to 0.79 for the rest.
 
 <div class="comparison-table" markdown="block">
 
@@ -274,9 +272,40 @@ There is a catch: what counts as "the piece along the direction" depends on whic
 
 With the first direction, each piece alone brings harmful refusals down to about a third. With the other two, the piece along the direction does less (56% to 60% of harmful prompts still refused) and the rest alone almost reproduces the whole neuron (5% to 6%). So the exact split depends on the direction, but two things hold in all three versions. The piece along the direction always carries a real share of the effect, and the rest always carries as much or more. The random push of the same size as the rest never lowers refusals, so the effect of "the rest" belongs to this neuron and is not just what any big push does. You can switch between the three versions of the direction below.
 
-<div class="l-body-outset">
-  <iframe src="{{ 'assets/html/2027-04-30-two-roads-to-no/two_halves.html' | relative_url }}" frameborder="0" scrolling="no" height="640px" width="100%" style="border-radius:14px;border:1px solid #e1e4e8;display:block;"></iframe>
-</div>
+
+<!--
+HYPOTHESIS NOTES (author only, not rendered; delete before submitting). Data still to come.
+
+Observation behind it
+- In the two clean versions of the direction (neuron's own write removed; direction measured before layer 11), the piece of neuron 4258 along Arditi's direction leaves 56% to 60% HarmBench refusals, while the rest (orthogonal to it) alone leaves 5% to 6%.
+- A random push of the same size as the rest does nothing (about 86%).
+- Version 1 (direction after layer 11) is circular: it already contains the neuron's own write, so it inflates the along piece. Weigh versions 2 and 3 more.
+
+Hypothesis A (weak, probably already supported): Arditi's difference-of-means direction does not capture everything this neuron writes that matters for refusal. Part of the effect lives in a direction orthogonal to Arditi's.
+
+Hypothesis B (strong, NOT yet supported): the neuron's output direction is a closer approximation of the "true" refusal direction than Arditi's difference of means. Possible reason: Kazemi et al. pick the neuron by its causal effect on refusal (gradient of the refusal probability), while a difference of means picks up everything that differs between harmful and harmless prompts, including features that do not cause refusal.
+
+Hypothesis C (alternative explanation to rule out): the "rest" is not refusal itself but some other feature the model reads (for example harm or topic features), or a disruption that happens to suppress refusal. Then B is false even though A is true.
+
+Why the current table cannot decide between them
+1. Sizes are not matched. At -4 the rest (length 0.71 to 0.79) is pushed about 1.6 to 2.9 times harder than the along piece (length 0.27 to 0.44). Also, pinning replaces the normal activation (about 1.19 on harmful prompts), so the real change is (-4 minus the usual activation) times the length, not 4 times the length.
+2. The head-to-head direction test does not separate them: neuron's direction 3.8% vs Arditi's 5.0% at size 3.35 (6 vs 8 of 159 prompts). Check how the size 3.35 is defined before comparing it with the pin settings.
+3. A random direction is a weak control. Use a direction of comparable norm taken from another neuron that is inert for refusal.
+4. There is no true direction to measure closeness against, so "closer" needs an operational definition (see tests).
+
+Tests that would settle it (all on Llama-3.1-8B-Instruct, layer 11, same prompts and seed as everywhere else)
+T1. Size-matched split: push the rest and the along piece by the same absolute amount along each unit direction (for example 1, 2, 3, ...), and plot HarmBench, OR-Bench-Hard and maths for both. If the rest is still stronger per unit, B gains support; if they match per unit, the table gap was only size.
+T2. Directional ablation of the neuron's unit output direction vs Arditi's unit direction, same layer. Compare refusals and maths. If the neuron's direction removes as much or more, B gains support.
+T3. Ablate only the rest (the unit direction orthogonal to Arditi's inside the neuron's output) and see whether refusals still fall. If yes, A is confirmed independently of the neuron's activation.
+T4. Addition test: add each direction (neuron's, Arditi's, rest) to harmless prompts at matched sizes and count induced refusals. Arditi's direction already makes 200 of 200 harmless prompts refuse; check whether the neuron's direction does it with a smaller push.
+T5. Rule out C: check whether the rest direction separates refused from answered harmless prompts, and whether pushing it changes things other than refusal (for example answers on harmless topics).
+T6. Repeat on at least one more model, otherwise keep the claim to Llama-3.1-8B-Instruct.
+
+How to phrase the result depending on outcome
+- If only A holds: "Arditi's direction misses part of what the neuron writes for refusal; a direction orthogonal to it carries a large share of the effect."
+- If T1 and T2 both favour the neuron: "On this model, the neuron's direction is at least as effective as Arditi's and carries refusal-relevant content Arditi's direction does not." Say "at least as effective", not "closer to the true direction", unless T4 and T5 also support it.
+- If T1 shows no per-unit gap: drop B and keep one sentence saying the size explains the table.
+-->
 
 ### Taking Arditi's Direction Apart
 
