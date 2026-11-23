@@ -384,7 +384,9 @@ Without any push, 83.0% of HarmBench prompts are refused. Per unit of push, Ardi
 
 The right-angled part is not inert, though. Removed on its own at layer 11, it takes HarmBench refusals from 83.0% to 77.4% and OR-Bench-Hard refusals from 28.0% to 18.7%, while removing the direction of neuron 1404 changes almost nothing (83.6% and 27.7%). Removing it together with Arditi's direction gives 6.9% on HarmBench, against 17.6% for Arditi's direction alone. Added to 200 harmless WildJailbreak prompts, which the model refuses 1.0% of the time, it raises refusals to 8.0% at a push of 1 and to 74.0% at 4.25. Arditi's direction gives 35.0% and 100%, and neuron 1404's gives 1.5% and 2.0%. It also helps tell refused prompts from answered ones: the AUROC of its projection on harmless OR-Bench-Hard prompts is 0.70, close to 0.72 for Arditi's direction, although it does not tell harmful prompts from harmless ones (0.58, against 1.00 for Arditi's).
 
-So the neuron writes something that is not in Arditi's direction and is tied to refusal. This fits later work that finds more than one direction for refusal <d-cite key="wollschlager2025geometry"></d-cite><d-cite key="pan2025hidden"></d-cite>. Two cautions apply. Arditi's direction is an estimate from 64 harmful and 64 harmless prompts, so "at right angles" to it may not be at right angles to the true refusal direction, and Wollschläger et al. point out that directions at right angles are not necessarily independent. And neuron 1404's direction is not a perfect null control: at size 3.35 it lowers OR-Bench-Hard refusals from 28% to 17%.
+We ran the same checks on the right-angled parts of three other neurons from this layer (10096, 12227 and 5147), each pointing the way the neuron moves harmful prompts, with neuron 1404 as the check again. The results are mixed. For neuron 10096, pushing against refusal along its right-angled part lowers HarmBench refusals to 16.4% at size 3.35 (33.3% for neuron 4258's), but removing it changes nothing (83.6%), and adding it to harmless prompts raises refusals only to 8.5% (size 1) and 9.0% (size 4.25). For neurons 12227 and 5147, the same push did not lower refusals in a clean way. For 12227 it raised them at sizes 1 and 2 (HarmBench 95.0% and 97.5%, OR-Bench-Hard 65.3% and 92.0%), and at 3.35 maths accuracy fell to 40%. For 5147 at 3.35, HarmBench refusals were 86.2%, OR-Bench-Hard refusals 49.7% and maths accuracy 70%. Removing either one changed nothing. So among the neurons we tried, only 4258's right-angled part lowers refusals, raises them and tells refused prompts from answered ones, and one other (10096) lowers them when pushed.
+
+For neuron 4258, then, the neuron writes something that is not in Arditi's direction and is tied to refusal. This fits later work that finds more than one direction for refusal <d-cite key="wollschlager2025geometry"></d-cite><d-cite key="pan2025hidden"></d-cite>. Two cautions apply. Arditi's direction is an estimate from 64 harmful and 64 harmless prompts, so "at right angles" to it may not be at right angles to the true refusal direction, and Wollschläger et al. point out that directions at right angles are not necessarily independent. And neuron 1404's direction is not a perfect null control: at size 3.35 it lowers OR-Bench-Hard refusals from 28% to 17%.
 
 ### It Is Not the Only Neuron
 
@@ -494,4 +496,46 @@ Then we pinned the top neurons from these rankings to -4 and looked at what happ
 Of the four best neurons for telling harmful from harmless, only one (10096) behaves like 4258. One (9056) lowers refusals only by breaking the model, one changes little, and one (6491) actually raises refusals. The reverse happens too: neuron 12227 ranks 12,876th of 14,336 at telling refused from answered prompts, and yet setting it to -1 lowered over-refusal from 28.0% to 8.7%. In our tests, how well a neuron separates prompts did not tell us whether changing it changes refusals.
 
 
-<!-- TODO (author): add the results for the other models (same steps). -->
+### Does This Hold on Another Model?
+
+We repeated the main steps on Qwen2.5-7B-Instruct, with the same prompts, the same recipe for Arditi's direction and the same judge. (Gemma-2-9B is still to come.) Two things are different from Llama. The search of Kazemi et al. gives neuron 17011 in layer 12, and we pin it to -13.7, which is four times its usual activity on harmful prompts in the search data. And Qwen refuses much less to begin with: 80.5% of HarmBench, 13.0% of WildJailbreak, 9.0% of OR-Bench-Hard and 2.4% of XSTest prompts.
+
+<div class="comparison-table" markdown="block">
+
+| Setting for neuron 17011 | HarmBench | WildJailbreak | OR-Bench-Hard | XSTest | Maths accuracy |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| No change | 80.5% | 13.0% | 9.0% | 2.4% | 93% |
+| Halved | 76.1% | 11.0% | 7.7% | 2.4% | 92% |
+| Switched off (0) | 71.7% | 10.5% | 5.7% | 1.6% | 93% |
+| Pinned to -3.4 | 60.4% | 2.5% | 0.3% | 1.2% | 90% |
+| Pinned to -6.8 | 41.5% | 0.0% | 0.0% | 0.8% | 94% |
+| Pinned to -13.7 | 10.1% | 0.0% | 0.0% | 0.4% | 90% |
+
+</div>
+
+What carries over from Llama is that this neuron controls refusal, and that over-refusal falls faster than HarmBench at the gentler settings. At -3.4, OR-Bench-Hard refusals fall by a factor of 30 (9.0% to 0.3%) and HarmBench refusals by only 1.3, though WildJailbreak refusals also fall by a factor of 5, as on Llama. You can see all of this in the first chart by switching the model.
+
+The link to Arditi's direction is weaker here. Neuron 17011 has a cosine of 0.20 with Arditi's direction at layer 12 (0.52 for neuron 4258 on Llama). It is still the highest in its layer, but the next neuron is at 0.14. With the neuron's own write removed from the direction, its cosine falls to 0.09, and it is 6th. Its push along the direction on harmful prompts is only 1.7 times that of the next neuron (9 times for Llama), and it makes up about 10% of the layer's total push (about 40% on Llama).
+
+Here the neuron's direction does better than Arditi's, which was not the case on Llama. We pushed the hidden state against refusal along each direction by the same amount at layer 12 (size 12.9, the push that pinning the neuron to -13.7 gives along its own direction):
+
+<div class="comparison-table" markdown="block">
+
+| Direction pushed along (size 12.9) | HarmBench refused | OR-Bench-Hard refused | Maths accuracy |
+| :--- | :---: | :---: | :---: |
+| Nothing | 80.5% | 9.0% | 93% |
+| The neuron's direction | 20.8% | 0.0% | 91% |
+| Arditi's direction | 63.5% | 0.3% | 86% |
+| Arditi's direction without the neuron's own write | 65.4% | 2.0% | 86% |
+| Refused minus answered harmful prompts (average hidden states) | 56.6% | 0.3% | 88% |
+| A random direction | 73.0% | 6.0% | 93% |
+
+</div>
+
+The same holds when removing directions at layer 12: removing the neuron's direction gives 44.0% on HarmBench, against 59.1% for Arditi's direction and 73.6% for the part of Arditi's direction at right angles to the neuron's. Removing the last two together gives 27.0%. (Removing Arditi's direction at layers 12 to 22 together, which is the usual way, gives 5.0%.) Adding the neuron's direction to harmless WildJailbreak prompts, which Qwen never refuses, with a size of 12.1 makes it refuse 50.0% of them. Adding Arditi's direction with the same size makes it refuse 4.0%, and with twice the size 22.0%. On Llama the two directions did about the same job, and on Qwen the neuron's direction is clearly stronger. This is one model each, so we cannot say which of the two cases is the usual one. The two directions are also not close on Qwen (cosine 0.20), and Arditi's direction comes from only 64 harmful and 64 harmless prompts.
+
+The two parts of the neuron look like they do on Llama. Setting only the part along Arditi's direction to -13.7 leaves HarmBench refusals at 76.1%, and setting only the rest lowers them to 16.4% (the other two versions of the direction give 74.8% to 78.0% and 12.6% to 13.2%). But here the rest is about five times longer than the part along the direction (0.93 against 0.19), so, as on Llama, the sizes are not matched. We did not repeat the equal-size test of the right-angled part on Qwen.
+
+The other checks from Llama also repeat. At -13.7, the neurons that are best aligned with Arditi's direction (8210, 13026 and 5092) change HarmBench refusals little (77.4%, 79.9% and 65.4%), and neurons ranked by the search score do more (2267: 40.9%, 14712: 45.9%, 7969: 54.7%), though none comes close to neuron 17011 (10.1%). None of the four neurons that best separate harmful from harmless prompts (14396, 14122, 18802, 6565) does anything much (73.0% to 79.2%), and neither does the best at separating refused from answered (15506, 83.6%). The comparison neurons with similar activity (6056, 8872, 13173) give 72.3% to 76.1%. Maths accuracy stays between 87% and 94% in all of them.
+
+<!-- TODO (author): add the results for Gemma-2-9B (same steps). -->
