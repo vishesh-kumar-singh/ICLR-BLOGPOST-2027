@@ -31,10 +31,10 @@ toc:
       - name: What We Found
   - name: Experimental Setup
   - name: First, Do Both Papers Hold on Our Models?
-  - name: "Question 1: Does the Neuron Write Arditi's Direction?"
+  - name: "Question 1: Does the Neuron Write the Refusal Direction?"
   - name: "Question 2: Which Part Carries Refusal?"
     subsections:
-      - name: Removing the Neuron's Direction or the Rest
+      - name: Removing the Neuron Direction or the Rest
       - name: Pushing Along Each Direction by the Same Amount
       - name: Pinning Each Piece of the Neuron
       - name: Why Gemma Behaves Differently
@@ -199,7 +199,7 @@ So every neuron adds something to the hidden state, and we can measure how much 
 ## Experimental Setup
 
 * **Models.** Llama-3.1-8B-Instruct, Qwen2.5-7B-Instruct and Gemma-2-9B-it, in 16-bit precision. Answers use greedy decoding, up to 512 new tokens.
-* **The neuron.** For each model we ran the official search code of Kazemi et al. and their reranking step (pin each of the five best candidates at 2, 4 and 8 times its **search activity**, keep the one that lowers refusals most without breaking maths). A neuron's search activity is its average activity on the search's own harmful prompts, at the token position the search picks for that neuron. We reranked on validation prompts, not on our test prompts. This gives neuron 4258 in layer 11 for Llama (the same as the paper), neuron 17011 in layer 12 for Qwen, and neuron 11539 in layer 21 for Gemma.
+* **The neuron.** For each model we ran the official search code of Kazemi et al. and their reranking step (pin each of the five best candidates at 2, 4 and 8 times its **search activity**, keep the one that lowers refusals most without breaking maths). A neuron's search activity is its average activity on the search's own harmful prompts, at the token position the search picks for that neuron. In some later tests we size a pin by a neuron's **own activity** instead: its average activity at the last prompt token, on the 64 harmful prompts used to build Arditi's direction. The two are measured differently, so their multiples differ: for Qwen's neuron 17011, a pin of -13.7 is 4 times its search activity and 8 times its own activity. We reranked on validation prompts, not on our test prompts. This gives neuron 4258 in layer 11 for Llama (the same as the paper), neuron 17011 in layer 12 for Qwen, and neuron 11539 in layer 21 for Gemma.
 * **Arditi's direction.** The recipe of Arditi et al., with 64 harmful prompts from AdvBench <d-cite key="zou2023universal"></d-cite> and 64 harmless prompts from Alpaca, at the last prompt token, taken right after the layer of the neuron.
 * **Harmful prompts.** HarmBench <d-cite key="mazeika2024harmbench"></d-cite> (159 prompts, our test split) and WildJailbreak <d-cite key="jiang2024wildteaming"></d-cite> (200 prompts, a mix of plain and disguised harmful requests).
 * **Harmless but risky-looking prompts.** OR-Bench-Hard <d-cite key="cui2025orbench"></d-cite> (300 prompts, drawn from its 1,319) and XSTest <d-cite key="rottger2024xstest"></d-cite> (250 prompts).
@@ -231,7 +231,7 @@ The widget below lets you change the setting yourself, for each model and for a 
   <iframe src="{{ 'assets/html/2027-04-30-two-roads-to-no/dose_response.html' | relative_url }}" frameborder="0" scrolling="no" height="730px" width="100%" style="border-radius:14px;border:1px solid #e1e4e8;display:block;"></iframe>
 </div>
 
-## Question 1: Does the Neuron Write Arditi's Direction?
+## Question 1: Does the Neuron Write the Refusal Direction?
 
 If the neuron is the main writer of the direction, two things must be true. Its output vector must point along the direction, and its activity must differ between harmful and harmless prompts, so that it actually moves the hidden state along the direction.
 
@@ -249,7 +249,7 @@ On the 128 prompts that define Arditi's direction, the same numbers are 9 times 
 
 The neuron's direction and Arditi's direction overlap but are not the same. On Llama, about 27% of Arditi's direction (in squared length) lies along the neuron's direction and 73% is the rest. On Gemma it is about 9%, and on Qwen about 4%. So the two pictures share a piece, and each has a piece the other lacks. This section asks which does the work: the neuron's direction, or the rest of Arditi's direction (its part at right angles to the neuron's direction). If the neuron's direction carries refusal, the neuron is a good handle on what Arditi's direction does. If the rest does, it is not.
 
-### Removing the Neuron's Direction or the Rest
+### Removing the Neuron Direction or the Rest
 
 We removed each of the two directions from the hidden state at the neuron's layer, one at a time and together. Removing a direction sets the hidden state's component along it to zero. Note that removing the neuron's direction removes everything along it, not only the share of Arditi's direction that it overlaps.
 
@@ -352,7 +352,7 @@ Here is what happens at the strongest setting (-4 on Llama, whose maths accuracy
 
 Maths accuracy stays within a few points of the unchanged model on Qwen and Gemma. On Llama it does not: at -4, 4258 itself loses 9 points, 11295 loses 6, 5147 and 12227 lose 12 and 14, 4421 loses 23 and 13247 loses all of it.
 
-**The same push relative to each neuron's own activity.** Pinning every neuron to the same value gives each one a write of about the same size, because their output vectors have about the same length. But compared with what each neuron normally does, it is a very different push. On Llama, 12227, 4421, 13247 and 11295 are almost silent on harmful prompts (own activity between -0.10 and 0.03), so -4 was roughly 40 to 300 times their own activity. By a neuron's **own activity** we mean its average activity at the last prompt token, on the 64 harmful prompts used to build Arditi's direction. So we also pinned each neuron at 2, 4 and 8 times its own activity, against refusal. This is not the search activity used to choose each model's neuron, so the two kinds of multiples differ: for Qwen's neuron 17011, a pin of -13.7 is 4 times its search activity and 8 times its own activity.
+**The same push relative to each neuron's own activity.** Pinning every neuron to the same value gives each one a write of about the same size, because their output vectors have about the same length. But compared with what each neuron normally does, it is a very different push. On Llama, 12227, 4421, 13247 and 11295 are almost silent on harmful prompts (own activity between -0.10 and 0.03), so -4 was roughly 40 to 300 times their own activity. So we also pinned each neuron at 2, 4 and 8 times its own activity (defined in Experimental Setup), against refusal.
 
 <div class="model-table" data-table="relsize"></div>
 
@@ -373,6 +373,7 @@ A natural shortcut is to rank neurons by how well their activity tells two kinds
 <div class="model-table" data-table="separation"></div>
 
 With every neuron pinned to the same value, on Llama, of the four best neurons at telling harmful from harmless, only one (10096) behaves like 4258. One lowers refusals only by breaking the model, one changes little, and one raises refusals. On Qwen and Gemma none of the top neurons does much (73.0% to 79.2% on Qwen, 91.8% to 98.7% on Gemma).
+
 **The same push relative to each neuron's own activity.** As with alignment, we then pinned each of these neurons at 2, 4 and 8 times its own activity, in the same direction as before.
 
 <div class="model-table" data-table="relsize_sep"></div>
@@ -387,7 +388,7 @@ We asked how the refusal neuron of Kazemi et al. and the refusal direction of Ar
 
 One way to read this: Arditi's direction is a difference of averages. It describes how harmful and harmless prompts differ, which need not be the direction along which a push changes behaviour most. The neuron of Kazemi et al. is found by its effect, so it can point to parts of refusal that the average blurs, in line with work that describes refusal with more than one direction <d-cite key="wollschlager2025geometry"></d-cite><d-cite key="pan2025hidden"></d-cite>. But a neuron is also tied to the model's architecture: on Gemma, the model's own rescaling of the MLP output decides how much of a neuron's push survives.
 
-Three practical lessons follow:
+Four practical lessons follow:
 
 * **A result about one handle does not carry over to the other.** Showing that a single neuron controls refusal in one model family says little about another, and the same holds for a single direction at one layer.
 * **Alignment with the direction is a hint, not a test.** Of the 12 neurons we picked by alignment, only one does a large part of the job when each is pushed in proportion to its own activity. Ranking neurons by how well they separate prompts turned up the same single neuron and no other.
